@@ -101,3 +101,68 @@ class generator(nn.Module):
         x = self.up_stage_1(x)
         x = self.up_stage_2(x)
         return self.head(x)
+
+
+class discriminator(nn.Module):
+    def __init__(self, in_channel=3):
+        super(discriminator, self).__init__()
+
+        self.stage_1 = nn.Sequential(
+            *[
+                nn.Conv2d(in_channel, 64, 4, stride=2, padding=1),
+                nn.LeakyReLU(0.2, inplace=True)
+            ]
+        )
+
+        self.stage_2 = nn.Sequential(
+            *[
+                nn.Conv2d(64, 128, 4, stride=2, padding=1),
+                nn.InstanceNorm2d(128),
+                nn.LeakyReLU(0.2, inplace=True)
+            ]
+        )
+
+        self.stage_3 = nn.Sequential(
+            *[
+                nn.Conv2d(128, 256, 4, stride=2, padding=1),
+                nn.InstanceNorm2d(256),
+                nn.LeakyReLU(0.2, inplace=True)
+            ]
+        )
+
+        self.stage_4 = nn.Sequential(
+            *[
+                nn.Conv2d(256, 512, 4, padding=1),
+                nn.InstanceNorm2d(512),
+                nn.LeakyReLU(0.2, inplace=True)
+            ]
+        )
+
+        self.head = nn.Sequential(
+            *[
+                nn.Conv2d(512, 1, 4, padding=1),
+                nn.AdaptiveAvgPool2d([1, 1])
+            ]
+        )
+
+        self.weight_init()
+
+    def weight_init(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                m.weight.data.normal_(0.0, 0.02)
+            elif isinstance(m, nn.BatchNorm2d):
+                m.weight.data.normal_(0.1, 0.02)
+                m.bias.data.fill_(0)
+            elif isinstance(m, nn.Linear):
+                m.weight.data.normal_(0.0, 0.02)
+                m.bias.data.fill_(0)
+
+    def forward(self, x):
+        x = self.stage_1(x)
+        x = self.stage_2(x)
+        x = self.stage_3(x)
+        x = self.stage_4(x)
+        x = self.head(x)
+
+        return x.view(x.size()[0])
